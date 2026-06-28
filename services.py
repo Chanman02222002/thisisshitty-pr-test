@@ -13,6 +13,7 @@ def summarize_support_ticket(note: str) -> str:
             {"role":"user","content":note},
         ],
     )
+    record_usage("services.py:9", response, baseline_model="gpt-4o-mini")
     record_usage("services.py:8", response, baseline_model="gpt-4")
     return response.choices[0].message.content
 
@@ -24,6 +25,7 @@ def classify_sales_lead(lead: str) -> str:
             {"role":"user","content":lead},
         ],
     )
+    record_usage("services.py:20", response, baseline_model="gpt-4o-mini")
     record_usage("services.py:18", response, baseline_model="gpt-4-turbo")
     return response.choices[0].message.content
 
@@ -36,22 +38,26 @@ def extract_contact_json(message: str) -> dict[str, Any]:
         ],
         response_format={"type":"json_object"},
     )
+    record_usage("services.py:31", response, baseline_model="gpt-4o")
     record_usage("services.py:28", response, baseline_model="gpt-4o")
     return json.loads(response.choices[0].message.content)
 
 def moderate_customer_message(message: str) -> bool:
     response = client.moderations.create(model="omni-moderation-latest", input=message)
+    record_usage("services.py:43", response, baseline_model="omni-moderation-latest")
     record_usage("services.py:39", response, baseline_model="omni-moderation-latest")
     return bool(response.results[0].flagged)
 
 def embed_knowledge_text(text: str) -> list[float]:
     response = client.embeddings.create(model="text-embedding-3-small", input=text)
+    record_usage("services.py:48", response, baseline_model="text-embedding-3-small")
     record_usage("services.py:43", response, baseline_model="text-embedding-3-small")
     return list(response.data[0].embedding)
 
 def runtime_support_reply(question: str) -> str:
     selected_model = os.getenv("SUPPORT_MODEL", "gpt-4o-mini")
     response = client.responses.create(model=selected_model, input=question)
+    record_usage("services.py:54", response, baseline_model="gpt-4o-mini")
     record_usage("services.py:48", response, baseline_model="gpt-4o-mini")
     return response.output_text
 
