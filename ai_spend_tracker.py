@@ -23,6 +23,7 @@ LOG_PATH = os.environ.get("AI_SPEND_LOG", "ai_spend_log.jsonl")
 STORE_TEXT = os.environ.get("AI_SPEND_STORE_TEXT", "") in ("1", "true", "True", "yes")
 API_URL = os.environ.get("AI_SPEND_API_URL", "http://aiapitest-production.up.railway.app").rstrip("/")
 CLIENT_KEY = os.environ.get("AI_SPEND_CLIENT_KEY", "ck_efa410ee088b3a492eb85289710c3252")
+DEFAULT_LABEL = os.environ.get("AI_SPEND_LABEL", "Chanman02222002/thisisshitty-pr-test")
 
 # $ per 1M tokens. Edit these to match your live contract pricing.
 PRICES = {
@@ -139,7 +140,7 @@ def record_usage(call_id, response=None, *, model=None, baseline_model=None,
         "ts": datetime.datetime.now(datetime.timezone.utc).isoformat(),
         "call_id": call_id,
         "client_key": (CLIENT_KEY or None),
-        "label": label,
+        "label": (label or (DEFAULT_LABEL or None)),
         "model": model,
         "baseline_model": baseline_model or model,
         "prompt_tokens": prompt_tokens,
