@@ -1,0 +1,27 @@
+name: Validate AIAPITEST scanner fixture
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -r requirements.txt
+      - name: Compile
+        run: python -m compileall .
+      - name: Test
+        run: pytest -q
+      - name: Tracker import smoke test
+        shell: bash
+        run: |
+          if [ -f ai_spend_tracker.py ]; then
+            python -c "from ai_spend_tracker import record_usage; assert callable(record_usage)"
+          else
+            echo "Tracker not present yet; it should be (re)applied by the scanner PR."
+          fi

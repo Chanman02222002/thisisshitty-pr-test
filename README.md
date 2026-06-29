@@ -1,27 +1,44 @@
-from __future__ import annotations
-from flask import Flask, jsonify, request
-from services import TRIGGERS, run_all_calls, run_trigger
+# AIAPITEST scanner fixture
 
-def create_app() -> Flask:
-    app = Flask(__name__)
-    @app.get('/')
-    def index():
-        return jsonify({'name':'AIAPITEST PR + tracking fixture','mock_only':True,'production_call_sites':len(TRIGGERS),'trigger_all':'POST /trigger-all','trigger_one':'POST /trigger/<name>','available':list(TRIGGERS)})
-    @app.get('/health')
-    def health(): return jsonify({'ok':True})
-    @app.post('/trigger/<name>')
-    def trigger_one(name: str):
-        try: result = run_trigger(name)
-        except ValueError as exc: return jsonify({'ok':False,'error':str(exc)}), 404
-        return jsonify({'ok':True,'trigger':name,'result':result})
-    @app.post('/trigger-all')
-    def trigger_all():
-        try: repeat = int(request.args.get('repeat','1'))
-        except ValueError: return jsonify({'ok':False,'error':'repeat must be an integer'}), 400
-        if repeat < 1 or repeat > 25: return jsonify({'ok':False,'error':'repeat must be between 1 and 25'}), 400
-        runs = [run_all_calls() for _ in range(repeat)]
-        return jsonify({'ok':True,'repeat':repeat,'calls_per_run':len(TRIGGERS),'expected_tracking_events':repeat*len(TRIGGERS),'runs':runs})
-    return app
+A deliberately hard, **runnable** test repo for the AI API / cost scanner.
 
-app = create_app()
-if __name__ == '__main__': app.run(host='127.0.0.1', port=5000, debug=False)
+The scanner's job on this repo is to:
+
+1. **Detect every AI model call site** across providers and coding styles.
+2. **Ignore the decoys** (things that look like model calls but are not).
+3. **Propose cheaper-model savings** where appropriate.
+4. **(Re)apply the usage tracker** — `ai_spend_tracker.py` plus a `record_usage(...)`
+   call after each detected site.
+
+This repo ships in a **clean, pre-scan state**: there is no `ai_spend_tracker.py`
+and no tracking instrumentation. The live tracking links (dashboard URL + client
+key) were removed on purpose so the scanner re-applies them.
+
+## Layout
+
+| File | Role |
+| --- | --- |
+| `services.py` | 6 **primary** call sites — the plain, must-always-detect baseline. |
+| `edge_cases.py` | 20 hard TRUE-positive cases (`EC01`–`EC20`) + 5 decoys (`EC21`–`EC25`). |
+| `integrations.py` | 6 non-OpenAI / wrapper-library call sites (`IN01`–`IN06`). |
+| `fake_ai.py` | Offline mock SDKs (OpenAI/Anthropic/Gemini/litellm/LangChain) so it all runs with no keys. |
+| `app.py` | Flask wrapper to trigger the primary calls over HTTP. |
+| `trigger_calls.py` | CLI runner (`--include-edge-cases` to exercise everything). |
+| `test_fixture.py` | pytest suite (also runs in CI). |
+| `SCANNER_TRAINING_CONTEXT.md` | **Ground-truth labels** — feed this to the scanner when training/evaluating. |
+
+## Run it
+
+```bash
+pip install -r requirements.txt
+pytest -q
+python trigger_calls.py --include-edge-cases
+```
+
+Everything is mock-only; no network calls leave the process.
+
+## Ground truth
+
+Total detectable AI call sites: **33** (6 primary + 21 edge + 6 integrations).
+Decoys that must NOT be flagged: **5**. Full per-site labels, difficulty, and
+expected savings are in [`SCANNER_TRAINING_CONTEXT.md`](./SCANNER_TRAINING_CONTEXT.md).
