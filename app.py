@@ -1,52 +1,45 @@
+"""Flask entry point for the Beacon backend."""
 from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+_ROOT = Path(__file__).resolve().parent
+for _p in (_ROOT / "vendor", _ROOT):
+    if str(_p) not in sys.path:
+        sys.path.insert(0, str(_p))
 
 from flask import Flask, jsonify, request
 
-from services import TRIGGERS, run_all_calls, run_trigger
+from beacon.support.summaries import summarize_ticket as _svc0
+from beacon.sales.scoring import score_lead as _svc1
+from beacon.marketing.content import draft_blog_post as _svc2
 
 
 def create_app() -> Flask:
     app = Flask(__name__)
 
-    @app.get("/")
-    def index():
-        return jsonify({
-            "name": "AIAPITEST scanner fixture",
-            "mock_only": True,
-            "primary_call_sites": len(TRIGGERS),
-            "trigger_all": "POST /trigger-all",
-            "trigger_one": "POST /trigger/<name>",
-            "available": list(TRIGGERS),
-        })
-
     @app.get("/health")
     def health():
         return jsonify({"ok": True})
 
-    @app.post("/trigger/<name>")
-    def trigger_one(name: str):
-        try:
-            result = run_trigger(name)
-        except ValueError as exc:
-            return jsonify({"ok": False, "error": str(exc)}), 404
-        return jsonify({"ok": True, "trigger": name, "result": result})
+    @app.post("/summarize_ticket")
+    def _route_0():
+        payload = request.get_json(silent=True) or {}
+        text = payload.get("text", "")
+        return jsonify({"result": _svc0(text)})
 
-    @app.post("/trigger-all")
-    def trigger_all():
-        try:
-            repeat = int(request.args.get("repeat", "1"))
-        except ValueError:
-            return jsonify({"ok": False, "error": "repeat must be an integer"}), 400
-        if repeat < 1 or repeat > 25:
-            return jsonify({"ok": False, "error": "repeat must be between 1 and 25"}), 400
-        runs = [run_all_calls() for _ in range(repeat)]
-        return jsonify({
-            "ok": True,
-            "repeat": repeat,
-            "calls_per_run": len(TRIGGERS),
-            "expected_calls": repeat * len(TRIGGERS),
-            "runs": runs,
-        })
+    @app.post("/score_lead")
+    def _route_1():
+        payload = request.get_json(silent=True) or {}
+        text = payload.get("text", "")
+        return jsonify({"result": _svc1(text)})
+
+    @app.post("/draft_blog_post")
+    def _route_2():
+        payload = request.get_json(silent=True) or {}
+        text = payload.get("text", "")
+        return jsonify({"result": _svc2(text)})
 
     return app
 
@@ -54,4 +47,4 @@ def create_app() -> Flask:
 app = create_app()
 
 if __name__ == "__main__":
-    app.run(host="127.0.0.1", port=5000, debug=False)
+    app.run(host="127.0.0.1", port=5000)

@@ -1,0 +1,8 @@
+[project]
+name = "beacon"
+version = "0.4.2"
+description = "Beacon customer platform backend service layer"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
